@@ -1,0 +1,7 @@
+POST http://localhost:3000/summarize
+Content-Type: application/json
+
+{
+  "url": "https://www.menicka.cz/5684-restaurace-u-vlka.html",
+  "date": "2025-11-25"
+}
