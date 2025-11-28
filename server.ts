@@ -3,7 +3,7 @@ import express, { Request, Response } from 'express';
 import db from './src/config/db';
 import { analyzeMenuWithAI } from './src/services/llm';
 import { fetchPageContent } from './src/services/scraper';
-import { MenuRequest, MenuResponse, CacheRow } from './src/types/types';
+import { ValidatedMenu, MenuRequest, CacheRow } from './src/schema/validation';
 
 dotenv.config();
 
@@ -28,7 +28,7 @@ app.post('/summarize', async (req: Request<{}, {}, MenuRequest>, res: Response) 
             const cachedRow = db.prepare('SELECT data FROM cache WHERE key = ?').get(cacheKey) as CacheRow | undefined;
             if (cachedRow) {
                 console.log('Cache HIT');
-                const parsedData = JSON.parse(cachedRow.data) as MenuResponse;
+                const parsedData = JSON.parse(cachedRow.data) as ValidatedMenu;
                 return res.json({ ...parsedData, source: 'cache' });
             }
         }
@@ -46,7 +46,7 @@ app.post('/summarize', async (req: Request<{}, {}, MenuRequest>, res: Response) 
 
         console.log('AI Analysis...');
         const menuData = await analyzeMenuWithAI(pageText, date);
-        const finalResult: MenuResponse = { ...menuData, source_url: url };
+        const finalResult: ValidatedMenu = { ...menuData, source_url: url };
 
         const ttl = (finalResult.is_closed || finalResult.menu_items.length === 0)
             ? 30 * 60 * 1000  // 30 min (Short TTL)
