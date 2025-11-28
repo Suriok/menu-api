@@ -69,8 +69,8 @@ Počkejte, dokud se neobjeví zpráva: Server running on http://localhost:3000.
 
 ### Spouštění testů
 Pro spuštění všech testů zadejte do terminálu:
-
-```npm test
+```
+npm test
 ```
 
 ---
@@ -98,3 +98,28 @@ Aplikace je navržena tak, aby byla odolná vůči nestandardním situacím:
 
 6.  **Menu pouze jako obrázek:**
   * *Limitace:* Aplikace zpracovává pouze textové HTML. Podpora pro obrázková menu (OCR / Vision LLM) je plánována jako budoucí rozšíření.
+
+---
+
+## TTL cache 24 h a 30 min
+### 1. Proč je 24 hodin příliš dlouhá doba? 
+   Hlavní nevýhoda spočívá v zastaralosti dat po půlnoci. Menu, které bylo uloženo v pondělí dopoledne, 
+   by mělo být neplatné v úterý ráno. Pokud vyprší až v úterý v 11:00 (tj. 24 hodin od uložení), uživatelé vidí včerejší nabídku.
+
+### 2. Kdy je i 30 minut problematických?
+Plýtvání kredity: Pokud je restaurace o víkendu standardně zavřená (is_closed: true), API zbytečně každých 30 minut spouští novou drahou analýzu LLM, aby zjistilo, že je stále zavřeno.
+
+Vysoké zatížení: Při vysoké návštěvnosti by každých 30 minut docházelo ke hromadnému zatížení backendu dotazy na všechny restaurace, i když se menu nezměnilo.
+
+## Ochrana proti SQL injection
+Zajištěno použitím parametrizovaných dotazů (db.prepare().run(?)). Tím je efektivně zabráněno vkládání uživatelských dat přímo do SQL syntaxe
+
+**Izolace testů** : Při spouštění testů se automaticky používá buď in-memory databáze, nebo oddělená testovací instance, aby se zabránilo kolizím dat a zaručila se izolace testů.
+
+**Separace prostředí** : Konfigurace (API klíče) je striktně oddělena do souboru .env a načítána podle prostředí (Dev/Test/Prod).
+
+## Ochrana proti prompt injection
+
+**Oddělení rolí**: Scraped data jsou vždy striktně oddělena do role user, zatímco kritické instrukce jsou v roli system (má vyšší prioritu).
+
+**Delimitery:** Neprověřená data (pageText) jsou obalena jasnými, nestandardními oddělovači (např. trojitými uvozovkami """..."""). Tyto znaky modelovi signalizují, že text uvnitř je materiál ke zpracování (data), nikoliv příkaz k vykonání.

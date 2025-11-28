@@ -26,13 +26,11 @@ jest.mock('openai', () => {
 
 import app from '../server';
 
-describe('Simple Homework Tests', () => {
+describe('Tests', () => {
 
     beforeEach(() => {
         const db = new Database('menu.db');
         try { db.exec("DELETE FROM cache"); } catch (e) {}
-
-        // Vyčistit historii volání mocků
         jest.clearAllMocks();
     });
 
@@ -78,7 +76,10 @@ describe('Simple Homework Tests', () => {
 
         mockCreate.mockResolvedValue({
             choices: [{ message: { content: JSON.stringify({
-                        restaurant_name: "Cache Rest", menu_items: [], daily_menu: true
+                        restaurant_name: "Cache Rest",
+                        date: "2025-11-29",
+                        menu_items: [],
+                        daily_menu: true
                     })}}]
         });
 
@@ -87,5 +88,35 @@ describe('Simple Homework Tests', () => {
 
         expect(res2.body.source).toBe('cache');
         expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    test('Should handle closed restaurant correctly', async () => {
+        mockFetch.mockResolvedValue({
+            ok: true,
+            text: async () => '<html>Zavřeno</html>'
+        });
+
+        mockCreate.mockResolvedValue({
+            choices: [{
+                message: {
+                    content: JSON.stringify({
+                        restaurant_name: "Closed Rest",
+                        date: "2025-10-22",
+                        is_closed: true,
+                        closure_reason: "Svátek",
+                        menu_items: [],
+                        daily_menu: false
+                    })
+                }
+            }]
+        });
+
+        const res = await request(app)
+            .post('/summarize')
+            .send({ url: 'https://closed.com', date: '2025-10-22' });
+
+        expect(res.statusCode).toBe(200);
+        expect(res.body.is_closed).toBe(true);
+        expect(res.body.closure_reason).toBe("Svátek");
     });
 });
